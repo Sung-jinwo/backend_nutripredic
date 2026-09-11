@@ -1,0 +1,13 @@
+ALTER TABLE reglas_requerimiento_nutricional ADD COLUMN IF NOT EXISTS tipo_regla VARCHAR(30);
+ALTER TABLE reglas_requerimiento_nutricional ADD COLUMN IF NOT EXISTS nutriente VARCHAR(20);
+ALTER TABLE reglas_requerimiento_nutricional ADD COLUMN IF NOT EXISTS codigo_formula VARCHAR(100);
+ALTER TABLE reglas_requerimiento_nutricional ADD COLUMN IF NOT EXISTS coeficiente_base NUMERIC(14,6);
+ALTER TABLE reglas_requerimiento_nutricional ADD COLUMN IF NOT EXISTS coeficiente_edad NUMERIC(14,6);
+ALTER TABLE reglas_requerimiento_nutricional ADD COLUMN IF NOT EXISTS coeficiente_peso_kg NUMERIC(14,6);
+ALTER TABLE reglas_requerimiento_nutricional ADD COLUMN IF NOT EXISTS coeficiente_altura_cm NUMERIC(14,6);
+ALTER TABLE reglas_requerimiento_nutricional ADD COLUMN IF NOT EXISTS factor_actividad NUMERIC(14,6);
+ALTER TABLE reglas_requerimiento_nutricional ADD COLUMN IF NOT EXISTS porcentaje_minimo_energia NUMERIC(8,4);
+ALTER TABLE reglas_requerimiento_nutricional ADD COLUMN IF NOT EXISTS porcentaje_maximo_energia NUMERIC(8,4);
+ALTER TABLE reglas_requerimiento_nutricional ADD COLUMN IF NOT EXISTS gramos_kg_minimo NUMERIC(10,4);
+ALTER TABLE reglas_requerimiento_nutricional ADD COLUMN IF NOT EXISTS gramos_kg_maximo NUMERIC(10,4);
+UPDATE reglas_requerimiento_nutricional SET tipo_regla='OBJETIVO_CONFIGURADO' WHERE tipo_regla IS NULL;

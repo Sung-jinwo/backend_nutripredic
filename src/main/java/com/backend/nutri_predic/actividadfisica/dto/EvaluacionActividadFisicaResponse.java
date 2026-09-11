@@ -1,0 +1,3 @@
+package com.backend.nutri_predic.actividadfisica.dto;
+import com.backend.nutri_predic.actividadfisica.entity.*; import java.math.*; import java.time.*;
+public record EvaluacionActividadFisicaResponse(Long id,LocalDate fechaEvaluacion,String instrumentoCodigo,String instrumentoVersion,String nivelResultado,BigDecimal valorResultado,String fuenteReferencia,Boolean validada,LocalDate vigenciaDesde,LocalDate vigenciaHasta){ public static EvaluacionActividadFisicaResponse from(EvaluacionActividadFisica x){return new EvaluacionActividadFisicaResponse(x.getId(),x.getFechaEvaluacion(),x.getInstrumentoCodigo(),x.getInstrumentoVersion(),x.getNivelResultado(),x.getValorResultado(),x.getFuenteReferencia(),x.getValidada(),x.getVigenciaDesde(),x.getVigenciaHasta());}}

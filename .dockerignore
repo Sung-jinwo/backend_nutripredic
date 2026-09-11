@@ -1,0 +1,65 @@
+# Docker ignore para NutriPredic
+
+# Maven
+target/
+.mvn/
+mvnw
+mvnw.cmd
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Test reports
+target/surefire-reports/
+target/failsafe-reports/
+
+# Maven
+~/.m2/
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# AI service (separado)
+ai/
+
+# Documentación
+*.md
+!README.md
+
+# Scripts locales
+*.sh
+*.bat
+*.ps1
+
+# Certificados
+*.pem
+*.key
+*.crt
+
+# Temporales
+*.tmp
+*.temp
+*.swp

@@ -1,0 +1,2 @@
+ALTER TABLE clientes ADD COLUMN IF NOT EXISTS sexo VARCHAR(15);
+ALTER TABLE historial_perfiles_cliente ADD COLUMN IF NOT EXISTS sexo VARCHAR(15);

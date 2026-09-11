@@ -1,0 +1,1 @@
+package com.backend.nutri_predic.plandia.dto; import java.math.BigDecimal; public record ComponenteCumplimientoResponse(BigDecimal minimo,BigDecimal maximo,BigDecimal consumido,BigDecimal diferenciaAlRango,BigDecimal porcentaje,String estado){}
