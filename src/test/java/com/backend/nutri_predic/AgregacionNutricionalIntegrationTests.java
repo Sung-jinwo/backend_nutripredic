@@ -37,9 +37,20 @@ class AgregacionNutricionalIntegrationTests {
     @Autowired ComposicionNutricionalAlimentoService composiciones;
     @Autowired EquivalenciaUnidadAlimentoService equivalencias;
     @Autowired AgregacionNutricionalService agregacion;
+    @Autowired jakarta.validation.Validator validator;
     private final UsernamePasswordAuthenticationToken admin =
             new UsernamePasswordAuthenticationToken(
                     "admin@test.local", "", List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
+
+    @Test
+    void contratoHttpMantieneNombreYMacrosObligatorios() {
+        var legacy = new RegistroAlimentoRequest(1L, BigDecimal.ONE, "G", MomentoComida.ALMUERZO);
+        assertThat(validator.validate(legacy).stream().map(v -> v.getPropertyPath().toString()))
+                .containsExactlyInAnyOrder("nombreAlimento", "proteinaG", "carbohidratosG", "grasasG");
+        var actual = new RegistroAlimentoRequest(null, "Comida de prueba", BigDecimal.ONE, "PORCION",
+                MomentoComida.ALMUERZO, BigDecimal.TEN, BigDecimal.TEN, BigDecimal.ONE);
+        assertThat(validator.validate(actual)).isEmpty();
+    }
 
     @Test
     @Transactional

@@ -48,13 +48,13 @@ class CicloDiarioServiceTests {
     void setUp() {
         prediccion = mock(PrediccionModelo.class);
         when(prediccion.getId()).thenReturn(50L);
-        when(prediccion.getFechaCorte()).thenReturn(LocalDate.now());
+        when(prediccion.getFechaCorte()).thenReturn(LocalDate.now(java.time.ZoneId.of("America/Lima")));
         when(prediccion.getMomentoEvaluacion()).thenReturn(MomentoEvaluacion.DIARIO);
         when(prediccion.getModelVersion()).thenReturn(ModeloPredictivoV6Service.MODEL_VERSION_ESPERADA);
         when(prediccion.getClasificacionPredicha()).thenReturn(ClasificacionPerfilHabitos.MEJORABLE);
-        when(predicciones.findFirstByClienteIdAndFechaCorteAndMomentoEvaluacionAndModelVersionAndEstadoOrderByFechaPrediccionDesc(
+        when(predicciones.findFirstByClienteIdAndFechaCorteAndMomentoEvaluacionAndSchemaVersionAndEstadoOrderByFechaPrediccionDesc(
                 eq(1L), any(LocalDate.class), eq(MomentoEvaluacion.DIARIO),
-                eq(ModeloPredictivoV6Service.MODEL_VERSION_ESPERADA), eq(EstadoPrediccionModelo.EXITOSA)))
+                eq("variables-modelo-v6"), eq(EstadoPrediccionModelo.EXITOSA)))
                 .thenReturn(Optional.of(prediccion));
 
         eventoFallido = mock(EventoAnalisis.class);

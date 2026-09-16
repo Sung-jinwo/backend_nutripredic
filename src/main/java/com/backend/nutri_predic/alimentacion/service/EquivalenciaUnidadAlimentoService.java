@@ -65,7 +65,8 @@ public class EquivalenciaUnidadAlimentoService {
             Long alimento, String origen, String destino, LocalDate fecha) {
         if (origen != null && destino != null && origen.equalsIgnoreCase(destino)) return Optional.empty();
         var xs = r.activas(alimento, origen, destino, fecha);
-        return xs.isEmpty() ? Optional.empty() : Optional.of(xs.getFirst());
+        // Una conversión ambigua no debe seleccionar arbitrariamente una equivalencia.
+        return xs.size() == 1 ? Optional.of(xs.getFirst()) : Optional.empty();
     }
 
     private com.backend.nutri_predic.unidad.entity.UnidadMedida unidad(String c) {

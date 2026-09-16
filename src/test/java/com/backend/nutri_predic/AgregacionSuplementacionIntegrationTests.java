@@ -73,7 +73,7 @@ class AgregacionSuplementacionIntegrationTests {
 
     @Test
     @Transactional
-    void agregaSoloConsumosCalculablesEnVentanaInclusivaYSinMultiplicarTomas() {
+    void agregaCantidadPorTomaConNumeroDeTomasEnVentanaInclusiva() {
         Cliente cliente = cliente("agregacion");
         Long proteina48 = suplementoConProteina(cliente, "Proteina 48", "24", true);
         Long proteina22 = suplementoConProteina(cliente, "Proteina 22", "22", false);
@@ -104,9 +104,10 @@ class AgregacionSuplementacionIntegrationTests {
         assertThat(ventana.registrosConsumoTotal()).isEqualTo(3);
         assertThat(ventana.registrosCalculables()).isEqualTo(2);
         assertThat(ventana.registrosNoCalculables()).isEqualTo(1);
-        assertThat(ventana.proteinaSuplementariaGTotal()).isEqualByComparingTo("70");
-        assertThat(ventana.promedioProteinaSobreVentana()).isEqualByComparingTo("10");
-        assertThat(ventana.promedioProteinaSobreDiasConConsumo()).isEqualByComparingTo("35");
+        // 60 g por toma / 30 g de referencia * 24 g proteína * 2 tomas + 22 g.
+        assertThat(ventana.proteinaSuplementariaGTotal()).isEqualByComparingTo("118");
+        assertThat(ventana.promedioProteinaSobreVentana()).isEqualByComparingTo("16.857143");
+        assertThat(ventana.promedioProteinaSobreDiasConConsumo()).isEqualByComparingTo("59");
         assertThat(ventana.cafeinaMgTotal()).isNull();
         assertThat(diaSinConsumo.registrosConsumoTotal()).isZero();
         assertThat(diaSinConsumo.proteinaSuplementariaG()).isNull();
@@ -127,6 +128,7 @@ class AgregacionSuplementacionIntegrationTests {
         var catalogo = suplementos.saveCatalog(null, catalogo("Fallback"));
         SuplementoCliente actual = new SuplementoCliente();
         actual.setCliente(cliente);
+        actual.setNombreDeclarado(catalogo.nombre());
         actual.setSuplemento(new com.backend.nutri_predic.suplemento.entity.SuplementoCatalogo());
         // La asignación se completa con el catálogo persistido para no generar historial.
         actual.setSuplemento(entityManagerReference(catalogo.id()));

@@ -128,6 +128,7 @@ class ModeloPredictivoServiceTests {
 
     @Test
     void reutilizaSoloResultadoV5SinNuevaLlamadaMl() {
+        prepararSchema(schemaConInformacion());
         var existente = new PrediccionModelo();
         existente.setCliente(cliente);
         existente.setFechaCorte(corte);
@@ -157,14 +158,14 @@ class ModeloPredictivoServiceTests {
 
         assertThat(resultado.prediccion()).isSameAs(existente);
         assertThat(resultado.origenResultado()).isEqualTo(OrigenResultadoAnalisis.REUTILIZADO);
-        verifyNoInteractions(variables, mapper, ml);
+        verify(variables).construir(1L, corte);
+        verifyNoInteractions(ml);
         verify(predicciones, never()).saveAndFlush(any());
     }
 
     @Test
     void rechazaVectorCompletamenteVacioSinLlamarAlModelo() {
         prepararSchema(schemaVacio());
-        sinReutilizable(MomentoEvaluacion.BASAL);
         @SuppressWarnings("unchecked")
         Consumer<Instant> modeloRespondio = mock(Consumer.class);
         TrazabilidadInferencia trazabilidad =
@@ -234,6 +235,7 @@ class ModeloPredictivoServiceTests {
 
     private FeatureSchemaV5 schemaConInformacion() {
         var features = baseFeatures();
+        FeatureSchemaV5Mapper.FEATURE_NAMES.forEach(nombre -> features.put(nombre, BigDecimal.ZERO));
         features.put("edad", 30);
         features.put("peso_kg", new BigDecimal("70.0"));
         features.put("altura_cm", new BigDecimal("170.0"));

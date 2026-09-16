@@ -119,7 +119,7 @@ class Phase2ApiIntegrationTests {
         String fin = LocalDate.now().plusMonths(2).toString();
         String body =
                 """
-                {"suplementoId":%d,"cantidad":5.0,"unidad":"g","frecuencia":"diaria",
+                {"suplementoId":%d,"nombreSuplemento":"Creatina de prueba","cantidad":5.0,"unidad":"g","frecuencia":"diaria",
                  "tiempoUso":"8 semanas","activo":true,"fechaInicio":"%s","fechaFin":"%s"}
                 """
                         .formatted(suplemento.getId(), inicio, fin);
@@ -138,7 +138,7 @@ class Phase2ApiIntegrationTests {
                 .andExpect(jsonPath("$[0].cantidad").value(5.0));
         String update =
                 """
-                {"cantidad":3.0,"unidad":"g","frecuencia":"días de entrenamiento",
+                {"nombreSuplemento":"Creatina de prueba","cantidad":3.0,"unidad":"g","frecuencia":"días de entrenamiento",
                  "tiempoUso":"12 semanas","activo":false,"fechaInicio":"%s","fechaFin":"%s"}
                 """
                         .formatted(inicio, fin);

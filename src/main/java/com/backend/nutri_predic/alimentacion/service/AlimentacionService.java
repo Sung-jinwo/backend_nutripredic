@@ -104,7 +104,7 @@ public class AlimentacionService {
         var x = new RegistroAlimento();
         x.setRegistroHabito(h);
         x.setAlimento(a);
-        x.setNombreRegistrado(r.nombreAlimento().trim());
+        x.setNombreRegistrado(nombreRegistro(r, a));
         var c = a == null ? null : composiciones.resolverActiva(a.getId(), h.getFecha()).orElse(null);
         x.setComposicionNutricional(c);
         var u = unidad(r.unidadCodigo());
@@ -141,7 +141,7 @@ public class AlimentacionService {
         var unidad = unidad(r.unidadCodigo());
         var composicion = alimento == null ? null : composiciones.resolverActiva(alimento.getId(), h.getFecha()).orElse(null);
         x.setAlimento(alimento);
-        x.setNombreRegistrado(r.nombreAlimento().trim());
+        x.setNombreRegistrado(nombreRegistro(r, alimento));
         x.setComposicionNutricional(composicion);
         x.setUnidad(unidad);
         x.setEquivalenciaUnidad(null);
@@ -236,7 +236,17 @@ public class AlimentacionService {
         return lista.stream().limit(20).toList();
     }
 
+    // Compatibilidad exclusivamente interna para registros de catálogo anteriores
+    // a los macros declarados. El DTO HTTP mantiene @NotBlank y @NotNull.
+    private String nombreRegistro(RegistroAlimentoRequest r, com.backend.nutri_predic.alimentacion.entity.AlimentoCatalogo alimento) {
+        if (r.nombreAlimento() != null && !r.nombreAlimento().isBlank()) return r.nombreAlimento().trim();
+        if (alimento != null && r.proteinaG() == null && r.carbohidratosG() == null && r.grasasG() == null) return alimento.getNombre();
+        throw new BusinessException("El nombre del alimento es requerido");
+    }
+
     private BigDecimal calcularKcal(RegistroAlimentoRequest r) {
+        if (r.alimentoId() != null && r.proteinaG() == null && r.carbohidratosG() == null && r.grasasG() == null) return null;
+        if (r.proteinaG() == null || r.carbohidratosG() == null || r.grasasG() == null) throw new BusinessException("Proteínas, carbohidratos y grasas son requeridos");
         return r.proteinaG().multiply(BigDecimal.valueOf(4))
                 .add(r.carbohidratosG().multiply(BigDecimal.valueOf(4)))
                 .add(r.grasasG().multiply(BigDecimal.valueOf(9)));

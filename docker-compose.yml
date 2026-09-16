@@ -61,6 +61,9 @@ services:
       
       # Spring profiles
       SPRING_PROFILES_ACTIVE: docker
+      # This deployment includes explicitly identified demonstration clients.
+      DEMO_SEED_ENABLED: ${DEMO_SEED_ENABLED:-true}
+      DEMO_SEED_PASSWORD: ${DEMO_SEED_PASSWORD:-}
       JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
     ports:
       - "8080:8080"
