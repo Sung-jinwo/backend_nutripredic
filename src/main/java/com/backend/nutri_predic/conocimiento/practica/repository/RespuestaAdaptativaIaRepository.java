@@ -10,4 +10,6 @@ public interface RespuestaAdaptativaIaRepository
             Long sesionId);
 
     boolean existsBySesionId(Long sesionId);
+
+    long countBySesionId(Long sesionId);
 }

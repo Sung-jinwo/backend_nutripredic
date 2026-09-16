@@ -13,7 +13,7 @@ import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 
 public record ClienteRequest(
-        @Min(1) @Max(120) Integer edad,
+        @Min(value = 13, message = "La edad mínima es 13 años") @Max(120) Integer edad,
         SexoBiologico sexo,
         @DecimalMin(value = "1.0", message = "El peso debe ser de al menos 1 kg")
                 @DecimalMax(value = "500.0", message = "El peso no puede superar 500 kg")

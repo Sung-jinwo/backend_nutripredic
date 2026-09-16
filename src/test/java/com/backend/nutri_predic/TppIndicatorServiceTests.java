@@ -12,8 +12,12 @@ import com.backend.nutri_predic.indicador.service.TppIndicatorService;
 import com.backend.nutri_predic.prediccionmodelo.evento.entity.EventoAnalisis;
 import com.backend.nutri_predic.prediccionmodelo.evento.entity.ProcedimientoAnalisis;
 import com.backend.nutri_predic.prediccionmodelo.evento.entity.TipoProcedimientoAnalisis;
+import com.backend.nutri_predic.prediccionmodelo.evento.entity.EstadoCicloDiario;
+import com.backend.nutri_predic.prediccionmodelo.evento.entity.OrigenResultadoAnalisis;
 import com.backend.nutri_predic.prediccionmodelo.evento.repository.EventoAnalisisRepository;
 import com.backend.nutri_predic.prediccionmodelo.entity.PrediccionModelo;
+import com.backend.nutri_predic.prediccionmodelo.service.ModeloPredictivoV6Service;
+import com.backend.nutri_predic.common.enums.MomentoEvaluacion;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -154,12 +158,34 @@ class TppIndicatorServiceTests {
         EventoAnalisis evento = eventoSoftwareIaValido(2_500);
         PrediccionModelo prediccion = new PrediccionModelo();
         prediccion.setTiempoInferenciaMs(999_999L);
+        prediccion.setModelVersion(ModeloPredictivoV6Service.MODEL_VERSION_ESPERADA);
         lenient().when(evento.getPrediccionModelo()).thenReturn(prediccion);
         dadoEventos(evento);
 
         var resultado = tpp.obtener();
 
         assertThat(resultado.promedioTppMs()).isEqualTo(2_500.0);
+    }
+
+    @Test
+    void excluyeCicloFallido() {
+        EventoAnalisis evento = eventoSoftwareIaValido(1_000);
+        given(evento.getEstadoCicloDiario()).willReturn(EstadoCicloDiario.FALLIDO);
+        assertExclusion(evento, MotivoExclusionTpp.CICLO_FALLIDO);
+    }
+
+    @Test
+    void excluyeResultadoReutilizado() {
+        EventoAnalisis evento = eventoSoftwareIaValido(1_000);
+        given(evento.getOrigenResultado()).willReturn(OrigenResultadoAnalisis.REUTILIZADO);
+        assertExclusion(evento, MotivoExclusionTpp.RESULTADO_REUTILIZADO);
+    }
+
+    @Test
+    void excluyeEventoQueNoEsDiario() {
+        EventoAnalisis evento = eventoSoftwareIaValido(1_000);
+        given(evento.getMomento()).willReturn(MomentoEvaluacion.BASAL);
+        assertExclusion(evento, MotivoExclusionTpp.NO_DIARIO);
     }
 
     private void assertExclusion(EventoAnalisis evento, MotivoExclusionTpp motivo) {
@@ -202,6 +228,17 @@ class TppIndicatorServiceTests {
         lenient().when(evento.getAnalisisIniciadoEn()).thenReturn(inicio);
         lenient().when(evento.getResultadoDisponibleEn()).thenReturn(resultado);
         lenient().when(evento.getEstadoValidez()).thenReturn(validez);
+        lenient().when(evento.getMomento()).thenReturn(MomentoEvaluacion.DIARIO);
+        lenient().when(evento.getOrigenResultado()).thenReturn(OrigenResultadoAnalisis.GENERADO);
+        lenient().when(evento.getEstadoCicloDiario()).thenReturn(EstadoCicloDiario.COMPLETADO);
+        lenient().when(evento.getCicloCompletadoEn()).thenReturn(
+                resultado == null ? INICIO.plusMillis(1_000) : resultado);
+        lenient().when(evento.getProcesamientoCicloMs()).thenReturn(
+                inicio == null || resultado == null ? 1_000L
+                        : Math.max(0L, java.time.Duration.between(inicio, resultado).toMillis()));
+        PrediccionModelo prediccion = mock(PrediccionModelo.class);
+        lenient().when(prediccion.getModelVersion()).thenReturn(ModeloPredictivoV6Service.MODEL_VERSION_ESPERADA);
+        lenient().when(evento.getPrediccionModelo()).thenReturn(prediccion);
         return evento;
     }
 

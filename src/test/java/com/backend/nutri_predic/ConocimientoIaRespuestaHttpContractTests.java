@@ -33,7 +33,7 @@ class ConocimientoIaRespuestaHttpContractTests {
                     .build();
 
     @Test
-    void respuestaValidaExponeFeedbackSinNivelPcc() throws Exception {
+    void respuestaValidaExponeFeedbackYNivelAdaptativoOficial() throws Exception {
         when(respuestas.responder(any(), any(), any(), any()))
                 .thenReturn(
                         new SesionConocimientoResultadoResponse(
@@ -64,7 +64,7 @@ class ConocimientoIaRespuestaHttpContractTests {
                 .andExpect(jsonPath("$.respuestas[0].respuestaCorrecta").value("B"))
                 .andExpect(jsonPath("$.respuestas[0].explicacion").exists())
                 .andExpect(jsonPath("$.nivelPcc").doesNotExist())
-                .andExpect(jsonPath("$.nivel").doesNotExist());
+                .andExpect(jsonPath("$.nivel").value("BAJO"));
     }
 
     @Test

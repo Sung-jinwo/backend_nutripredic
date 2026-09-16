@@ -57,6 +57,13 @@ public class EventoAnalisis {
     private Instant modeloSolicitadoEn;
     private Instant modeloRespondioEn;
     private Instant resultadoDisponibleEn;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "estado_ciclo_diario", length = 20)
+    private EstadoCicloDiario estadoCicloDiario;
+    private Instant cicloCompletadoEn;
+    private Long procesamientoCicloMs;
+    @Column(length = 40) private String moduloFalloCiclo;
+    @Column(length = 1000) private String motivoFalloCiclo;
 
     @Enumerated(EnumType.STRING)
     private MomentoEvaluacion momento = MomentoEvaluacion.NO_DETERMINADO;
@@ -147,6 +154,33 @@ public class EventoAnalisis {
         modeloRespondioEn = asignarUnaVez(modeloRespondioEn, instante, "modeloRespondioEn");
     }
 
+    public void iniciarCicloDiario() {
+        if (momento == MomentoEvaluacion.DIARIO && estadoCicloDiario == null) {
+            estadoCicloDiario = EstadoCicloDiario.PENDIENTE;
+            procesamientoCicloMs = 0L;
+        }
+    }
+
+    public void registrarIntentoCiclo(
+            long duracionActivaMs, boolean completo, String moduloFallo, String motivoFallo,
+            Instant completadoEn) {
+        if (momento != MomentoEvaluacion.DIARIO) return;
+        if (estadoCicloDiario == EstadoCicloDiario.COMPLETADO) return;
+        if (duracionActivaMs < 0) throw new IllegalArgumentException("La duración activa no puede ser negativa");
+        procesamientoCicloMs = (procesamientoCicloMs == null ? 0L : procesamientoCicloMs) + duracionActivaMs;
+        if (completo) {
+            if (completadoEn == null) throw new IllegalArgumentException("El cierre del ciclo es obligatorio");
+            estadoCicloDiario = EstadoCicloDiario.COMPLETADO;
+            cicloCompletadoEn = completadoEn;
+            moduloFalloCiclo = null;
+            motivoFalloCiclo = null;
+        } else {
+            estadoCicloDiario = EstadoCicloDiario.FALLIDO;
+            moduloFalloCiclo = moduloFallo;
+            motivoFalloCiclo = motivoFallo;
+        }
+    }
+
     private Instant asignarUnaVez(Instant actual, Instant nuevo, String campo) {
         if (actual != null || nuevo == null) {
             throw new IllegalStateException(campo + " sólo puede asignarse una vez");
@@ -223,6 +257,11 @@ public class EventoAnalisis {
     public Instant getResultadoDisponibleEn() {
         return resultadoDisponibleEn;
     }
+    public EstadoCicloDiario getEstadoCicloDiario() { return estadoCicloDiario; }
+    public Instant getCicloCompletadoEn() { return cicloCompletadoEn; }
+    public Long getProcesamientoCicloMs() { return procesamientoCicloMs; }
+    public String getModuloFalloCiclo() { return moduloFalloCiclo; }
+    public String getMotivoFalloCiclo() { return motivoFalloCiclo; }
 
     public MomentoEvaluacion getMomento() {
         return momento;

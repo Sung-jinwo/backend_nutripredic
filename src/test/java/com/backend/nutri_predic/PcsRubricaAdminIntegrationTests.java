@@ -111,7 +111,7 @@ class PcsRubricaAdminIntegrationTests {
 
     @Test
     @Transactional
-    void rubricaAplicableSinReglaEjecutableContinuaNoDeterminada() {
+    void rubricaVaciaNoDesplazaUnaConfiguracionEjecutable() {
         var rubrica = service.crear(rubricaRequest(true, "Configuración pendiente"));
         service.cambiarEstado(
                 rubrica.id(), new CambioEstadoRubricaConsumoRequest(EstadoCriterioConsumo.ACTIVO));
@@ -126,10 +126,10 @@ class PcsRubricaAdminIntegrationTests {
         var resultado =
                 evaluador.extraer(new EvaluacionConsumoRequest(cliente.getId(), CORTE, 7, null));
 
-        assertThat(resultado.rubricaId()).isEqualTo(rubrica.id());
+        assertThat(resultado.rubricaId()).isNull();
         assertThat(resultado.altoConsumo()).isNull();
         assertThat(resultado.estadoClasificacion()).isEqualTo("NO_DETERMINADA");
-        assertThat(resultado.motivo()).isEqualTo("CRITERIO_NO_IMPLEMENTADO");
+        assertThat(resultado.motivo()).isEqualTo("CRITERIO_NO_CONFIGURADO");
     }
 
     private RubricaConsumoSuplementosRequest rubricaRequest(boolean validada, String observacion) {

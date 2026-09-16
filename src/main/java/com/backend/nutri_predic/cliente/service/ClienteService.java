@@ -61,7 +61,14 @@ public class ClienteService {
         var objetivoEnergeticoAnterior = cliente.getObjetivoEnergetico();
         if (request.edad() != null) cliente.setEdad(request.edad());
         if (request.sexo() != null) cliente.setSexo(request.sexo());
-        if (request.pesoKg() != null) cliente.setPesoKg(request.pesoKg());
+        if (request.pesoKg() != null) {
+            if (!admin && cliente.getPesoKg() != null
+                    && !Objects.equals(cliente.getPesoKg(), request.pesoKg())) {
+                throw new com.backend.nutri_predic.common.exception.BusinessException(
+                        "El peso vigente se actualiza mediante el registro semanal");
+            }
+            cliente.setPesoKg(request.pesoKg());
+        }
         if (request.alturaCm() != null) cliente.setAlturaCm(request.alturaCm());
         if (request.objetivoFisico() != null)
             cliente.setObjetivoFisico(request.objetivoFisico().trim());
@@ -156,6 +163,25 @@ public class ClienteService {
             case MANTENER_PESO -> com.backend.nutri_predic.common.enums.ObjetivoEnergetico.MANTENIMIENTO;
             case MEJORAR_RENDIMIENTO, RECOMPOSICION_CORPORAL, OTRO -> null;
         };
+    }
+
+    @Transactional
+    public void actualizarPesoSemanal(Long clienteId, java.math.BigDecimal pesoKg, LocalDate fecha) {
+        var cliente = clientes.findById(clienteId).orElseThrow(
+                () -> new com.backend.nutri_predic.common.exception.ResourceNotFoundException("Cliente"));
+        if (Objects.equals(cliente.getPesoKg(), pesoKg)) return;
+        cliente.setPesoKg(pesoKg);
+        clientes.save(cliente);
+        var abiertos = historial.findByClienteIdOrderByFechaDesdeDescCreadoEnDescIdDesc(clienteId).stream()
+                .filter(h -> h.getVigenteHasta() == null).toList();
+        var snapshotMismoDia = abiertos.stream().filter(h -> fecha.equals(h.getFechaDesde())).findFirst().orElse(null);
+        if (snapshotMismoDia != null) {
+            snapshotMismoDia.setPesoKg(pesoKg);
+            historial.save(snapshotMismoDia);
+            return;
+        }
+        abiertos.forEach(h -> { h.setVigenteHasta(fecha); historial.save(h); });
+        historial.save(new HistorialPerfilCliente(cliente, fecha));
     }
 
     @Transactional(readOnly = true)

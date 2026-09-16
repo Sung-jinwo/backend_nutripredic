@@ -30,7 +30,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ModeloPredictivoV6Service {
-    private static final String MODEL_VERSION_ESPERADA = "technical-v6-daily-002";
+    public static final String MODEL_VERSION_ESPERADA = "technical-v6-daily-002";
+    public static final String MODEL_VERSION_FINAL_PREFIX = "random-forest-v6-final-";
     private static final String MODEL_TYPE = "LOGISTIC_REGRESSION";
     private static final String TRAINING_DATA_TYPE = "SYNTHETIC_TECHNICAL";
     private static final boolean THESIS_FINAL_MODEL = false;
@@ -88,16 +89,17 @@ public class ModeloPredictivoV6Service {
 
         var reutilizable =
                 predicciones
-                        .findFirstByClienteIdAndFechaCorteAndMomentoEvaluacionAndParticipacionEstudioIdAndSchemaVersionAndModelVersionAndEstadoOrderByFechaPrediccionDesc(
+                        .findFirstByClienteIdAndFechaCorteAndMomentoEvaluacionAndParticipacionEstudioIdAndSchemaVersionAndEstadoOrderByFechaPrediccionDesc(
                                 cliente.getId(),
                                 request.fechaCorte(),
                                 request.momento(),
                                 participacion == null ? null : participacion.getId(),
                                 FeatureSchemaV6Mapper.SCHEMA_VERSION,
-                                MODEL_VERSION_ESPERADA,
                                 EstadoPrediccionModelo.EXITOSA)
                         .filter(
                                 prediccion ->
+                                        esModeloDiarioAdmitido(prediccion.getModelVersion())
+                                                &&
                                         prediccion.getInferenceMs() != null
                                                 && prediccion.getInferredAt() != null
                                                 && prediccion.getMetaKcal() != null
@@ -131,9 +133,10 @@ public class ModeloPredictivoV6Service {
             prediccion.setSchemaVersion(respuesta.schemaVersion());
             prediccion.setInferenceMs(respuesta.inferenceMs());
             prediccion.setInferredAt(respuesta.inferredAt());
-            prediccion.setModelType(MODEL_TYPE);
-            prediccion.setTrainingDataType(TRAINING_DATA_TYPE);
-            prediccion.setThesisFinalModel(THESIS_FINAL_MODEL);
+            boolean finalRf = esModeloFinalRandomForest(respuesta.modelVersion());
+            prediccion.setModelType(finalRf ? "RANDOM_FOREST" : MODEL_TYPE);
+            prediccion.setTrainingDataType(finalRf ? "REAL" : TRAINING_DATA_TYPE);
+            prediccion.setThesisFinalModel(finalRf);
             prediccion.setFeatureCount(FeatureSchemaV6Mapper.FEATURE_NAMES.size());
             prediccion.setMetaKcal(respuesta.kcal());
             prediccion.setMetaProteinaG(respuesta.proteinaG());
@@ -170,7 +173,7 @@ public class ModeloPredictivoV6Service {
                 .findByClienteIdAndEstadoOrderByFechaPrediccionDesc(
                         clienteId, EstadoPrediccionModelo.EXITOSA)
                 .stream()
-                .filter(prediccion -> MODEL_VERSION_ESPERADA.equals(prediccion.getModelVersion()))
+                .filter(prediccion -> esModeloDiarioAdmitido(prediccion.getModelVersion()))
                 .map(PrediccionModeloHistorialResponse::from)
                 .toList();
     }
@@ -217,9 +220,9 @@ public class ModeloPredictivoV6Service {
                     "SchemaVersion incompatible: esperado " + FeatureSchemaV6Mapper.SCHEMA_VERSION
                             + ", recibido " + respuesta.schemaVersion());
         }
-        if (!MODEL_VERSION_ESPERADA.equals(respuesta.modelVersion())) {
+        if (!esModeloDiarioAdmitido(respuesta.modelVersion())) {
             throw new ModeloMlException(
-                    "ModelVersion incompatible: esperado " + MODEL_VERSION_ESPERADA
+                    "ModelVersion incompatible: esperado " + MODEL_VERSION_ESPERADA + " o Random Forest final"
                             + ", recibido " + respuesta.modelVersion());
         }
         if (respuesta.inferenceMs() == null
@@ -241,7 +244,16 @@ public class ModeloPredictivoV6Service {
     }
 
     private void validarFechaCorte(java.time.LocalDate fechaCorte) {
-        if (fechaCorte == null || fechaCorte.isAfter(java.time.LocalDate.now()))
+        if (fechaCorte == null || fechaCorte.isAfter(
+                java.time.LocalDate.now(java.time.ZoneId.of("America/Lima"))))
             throw new BusinessException("fechaCorte no puede ser futura");
+    }
+
+    public static boolean esModeloFinalRandomForest(String version) {
+        return version != null && version.startsWith(MODEL_VERSION_FINAL_PREFIX);
+    }
+
+    public static boolean esModeloDiarioAdmitido(String version) {
+        return MODEL_VERSION_ESPERADA.equals(version) || esModeloFinalRandomForest(version);
     }
 }

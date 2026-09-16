@@ -85,6 +85,35 @@ public class GeneracionPreguntasConocimientoService {
         return generarConConfiguracion(clienteId, request, auth, CONFIG, null, null);
     }
 
+    @Transactional
+    public SesionConocimientoPublicaResponse generarInicialDesdePlan(
+            com.backend.nutri_predic.cliente.entity.Cliente cliente, PlanDiario plan) {
+        var existente = sesiones.findByClienteIdAndConfiguracionVersion(cliente.getId(), "pcc-inicial-v1");
+        if (existente.isPresent() && existente.get().getEstado() != EstadoSesionConocimientoIa.IA_NO_DISPONIBLE)
+            return respuesta(existente.get());
+        var diaria = sesiones.findFirstByClienteIdAndFechaEvaluacionOrderByCreadoEnDesc(cliente.getId(), plan.getFechaObjetivo());
+        if (diaria.isPresent() && diaria.get().getPrediccionModelo() != null) return respuesta(diaria.get());
+        var sesion = existente.orElseGet(SesionConocimientoIa::new);
+        sesion.prepararReintentoGeneracion();
+        sesion.setClienteId(cliente.getId());
+        sesion.setFechaEvaluacion(plan.getFechaObjetivo());
+        sesion.setConfiguracionVersion("pcc-inicial-v1");
+        sesion.setModelVersionPredictivo("NO_APLICA_EVALUACION_INICIAL");
+        sesion.setSchemaVersion("conocimiento-inicial-v1");
+        sesion.setModeloGenerativo(props.getModel());
+        sesion.setObjetivoCliente(cliente.getTipoObjetivoFisico() == null ? cliente.getObjetivoFisico() : cliente.getTipoObjetivoFisico().name());
+        sesion.setClasificacionPredictiva(null);
+        sesion.setPlanDiario(plan);
+        sesion.setMetaKcal(plan.getEnergiaMaxKcal());
+        sesion.setMetaProteinaG(plan.getProteinaMaxG());
+        sesion.setMetaCarbohidratosG(plan.getCarbohidratosMaxG());
+        sesion.setMetaGrasasG(plan.getGrasasMaxG());
+        sesion.setMetaAguaMl(plan.getAguaMaxMl());
+        sesion.setPuntajeMaximo(java.math.BigDecimal.TEN);
+        return intentarGeneracion(sesion, null,
+                new GenerarConocimientoIaRequest(List.of("ALIMENTACION", "SUPLEMENTACION", "HABITOS"), "MEDIA", 5), plan);
+    }
+
     /** Disparo del ciclo V5: siempre usa la misma configuración para una predicción. */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public SesionConocimientoPublicaResponse generarAutomatico(Long prediccionId) {
@@ -152,6 +181,18 @@ public class GeneracionPreguntasConocimientoService {
                 sesiones.findByPrediccionModeloIdAndConfiguracionVersion(
                         prediccion.getId(), configuracionVersion);
         if (existente.isPresent()) {
+            if (existente.get().getEstado() == EstadoSesionConocimientoIa.IA_NO_DISPONIBLE
+                    && CONFIG.equals(configuracionVersion)
+                    && reintentoDeSesion == null) {
+                preguntas.deleteBySesionId(existente.get().getId());
+                preguntas.flush();
+                existente.get().prepararReintentoGeneracion();
+                return intentarGeneracion(
+                        existente.get(), prediccion, request,
+                        prediccion.getFechaCorte() == null ? null
+                                : planes.findByClienteIdAndFechaObjetivo(
+                                        clienteId, prediccion.getFechaCorte()).orElse(null));
+            }
             trazas.save(
                     new TrazaLlamadaGemini(
                             prediccion,
@@ -168,6 +209,14 @@ public class GeneracionPreguntasConocimientoService {
                         clienteId, prediccion.getFechaCorte()).orElse(null);
         var sesion = nuevaSesion(prediccion, configuracionVersion, plan);
         sesion.setReintentoDeSesion(reintentoDeSesion);
+        return intentarGeneracion(sesion, prediccion, request, plan);
+    }
+
+    private SesionConocimientoPublicaResponse intentarGeneracion(
+            SesionConocimientoIa sesion,
+            PrediccionModelo prediccion,
+            GenerarConocimientoIaRequest request,
+            PlanDiario plan) {
         try {
             var generadas =
                     gemini.generar(
@@ -175,12 +224,11 @@ public class GeneracionPreguntasConocimientoService {
                                     request.temasPermitidos(),
                                     request.dificultadPermitida(),
                                     request.cantidadPreguntas(),
-                                    objetivoCliente(prediccion),
-                                    prediccion.getClasificacionPredicha() == null
-                                            ? null
-                                            : prediccion.getClasificacionPredicha().name(),
+                                    sesion.getObjetivoCliente(),
+                                    sesion.getClasificacionPredictiva(),
                                     contextoPlan(plan),
-                                    contextoErroresPrevios(clienteId, prediccion.getFechaCorte())));
+                                    contextoErroresPrevios(
+                                            sesion.getClienteId(), sesion.getFechaEvaluacion())));
             validar(generadas, request);
             sesion.setEstado(EstadoSesionConocimientoIa.GENERADA);
             sesion.setGeneradoEn(Instant.now());
@@ -202,7 +250,7 @@ public class GeneracionPreguntasConocimientoService {
                 pregunta.setOrden(orden++);
                 preguntas.save(pregunta);
             }
-            trazas.save(new TrazaLlamadaGemini(prediccion, true, generadas.size(), false));
+            if (prediccion != null) trazas.save(new TrazaLlamadaGemini(prediccion, true, generadas.size(), false));
             return respuesta(sesion);
         } catch (GeminiClientException error) {
             return respuesta(
@@ -236,7 +284,7 @@ public class GeneracionPreguntasConocimientoService {
         access.client(clienteId, auth);
         var sesion =
                 (fecha == null
-                        ? sesiones.findFirstByPrediccionModeloClienteIdOrderByCreadoEnDesc(clienteId)
+                        ? sesiones.findFirstByClienteIdOrderByCreadoEnDesc(clienteId)
                         : sesiones.findFirstByClienteIdAndFechaEvaluacionOrderByCreadoEnDesc(clienteId, fecha))
                         .orElseThrow(
                                 () ->
@@ -329,10 +377,10 @@ public class GeneracionPreguntasConocimientoService {
         sesion.setEtapaError(etapaError);
         sesion.setTipoExcepcionSeguro(tipoExcepcionSeguro);
         var persistida = sesiones.save(sesion);
-        trazas.save(new TrazaLlamadaGemini(prediccion, false, 0, false));
+        if (prediccion != null) trazas.save(new TrazaLlamadaGemini(prediccion, false, 0, false));
         log.warn(
                 "Fallo Gemini prediccionModeloId={} sesionId={} codigoErrorTecnico={} httpStatusGemini={} etapaError={} tipoExcepcionSeguro={} timestamp={}",
-                prediccion.getId(),
+                prediccion == null ? null : prediccion.getId(),
                 persistida.getId(),
                 codigoTecnico,
                 httpStatus,

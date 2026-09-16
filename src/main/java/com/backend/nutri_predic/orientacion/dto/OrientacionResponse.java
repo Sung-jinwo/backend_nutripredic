@@ -1,12 +1,15 @@
 package com.backend.nutri_predic.orientacion.dto;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
 public record OrientacionResponse(
         boolean personalizadaDisponible,
         String mensaje,
+        LocalDate fechaAplicacion,
+        Long planDiarioId,
         Evaluacion evaluacion,
         List<Comparacion> comparaciones,
         List<Prioridad> prioridades,
@@ -19,7 +22,10 @@ public record OrientacionResponse(
             BigDecimal probAdecuado,
             BigDecimal probMejorable,
             BigDecimal probCritico,
-            String modelVersion) {}
+            BigDecimal confianzaPct,
+            String modelVersion,
+            BigDecimal inferenceMs,
+            Instant inferredAt) {}
 
     public record Comparacion(
             String codigo,
@@ -27,8 +33,10 @@ public record OrientacionResponse(
             String unidad,
             BigDecimal meta,
             BigDecimal consumido,
+            BigDecimal diferencia,
             BigDecimal porcentaje,
-            String estado) {}
+            String estado,
+            String estadoNormalizado) {}
 
     public record Prioridad(
             String codigo,
@@ -45,6 +53,6 @@ public record OrientacionResponse(
     public static OrientacionResponse sinEvaluacion() {
         return new OrientacionResponse(false,
                 "Completa al menos un día de registro de alimentos y agua para recibir orientación nutricional personalizada.",
-                null, List.of(), List.of(), List.of());
+                null, null, null, List.of(), List.of(), List.of());
     }
 }

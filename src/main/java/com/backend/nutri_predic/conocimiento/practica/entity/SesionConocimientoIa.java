@@ -3,6 +3,7 @@ package com.backend.nutri_predic.conocimiento.practica.entity;
 import com.backend.nutri_predic.conocimiento.entity.InstrumentoConocimiento;
 import com.backend.nutri_predic.prediccionmodelo.entity.PrediccionModelo;
 import com.backend.nutri_predic.plandia.entity.PlanDiario;
+import com.backend.nutri_predic.common.enums.EstadoValidezMedicion;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -18,7 +19,7 @@ public class SesionConocimientoIa {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(optional = false)
+    @ManyToOne
     @JoinColumn(name = "prediccion_modelo_id")
     private PrediccionModelo prediccionModelo;
 
@@ -86,6 +87,13 @@ public class SesionConocimientoIa {
 
     @Column(length = 20)
     private String nivelResultado;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "estado_validez", nullable = false, length = 30)
+    private EstadoValidezMedicion estadoValidez = EstadoValidezMedicion.NO_DETERMINADA;
+
+    @Column(name = "motivo_invalidez", length = 255)
+    private String motivoInvalidez;
     private String codigoErrorTecnico;
     private Integer httpStatusGemini;
     private Instant fallidoEn;
@@ -156,6 +164,8 @@ public class SesionConocimientoIa {
     public BigDecimal getPuntajeObtenido() { return puntajeObtenido; }
     public BigDecimal getPuntajeMaximo() { return puntajeMaximo; }
     public String getNivelResultado() { return nivelResultado; }
+    public EstadoValidezMedicion getEstadoValidez() { return estadoValidez; }
+    public String getMotivoInvalidez() { return motivoInvalidez; }
 
     public String getCodigoErrorTecnico() {
         return codigoErrorTecnico;
@@ -230,6 +240,20 @@ public class SesionConocimientoIa {
     public void setPuntajeObtenido(BigDecimal v) { puntajeObtenido = v; }
     public void setPuntajeMaximo(BigDecimal v) { puntajeMaximo = v; }
     public void setNivelResultado(String v) { nivelResultado = v; }
+    public void setEstadoValidez(EstadoValidezMedicion v) { estadoValidez = v; }
+    public void setMotivoInvalidez(String v) { motivoInvalidez = v; }
+
+    public void prepararReintentoGeneracion() {
+        estado = EstadoSesionConocimientoIa.IA_NO_DISPONIBLE;
+        generadoEn = null;
+        codigoErrorTecnico = null;
+        httpStatusGemini = null;
+        fallidoEn = null;
+        etapaError = null;
+        tipoExcepcionSeguro = null;
+        estadoValidez = EstadoValidezMedicion.NO_DETERMINADA;
+        motivoInvalidez = null;
+    }
 
     public void marcarRespondida(Instant instante) {
         if (estado != EstadoSesionConocimientoIa.GENERADA || respondidaEn != null) {

@@ -96,6 +96,10 @@ public class HistorialPerfilCliente {
         return pesoKg;
     }
 
+    public void setPesoKg(BigDecimal pesoKg) {
+        this.pesoKg = pesoKg;
+    }
+
     public BigDecimal getAlturaCm() {
         return alturaCm;
     }

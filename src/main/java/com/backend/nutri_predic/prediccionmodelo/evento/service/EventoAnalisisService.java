@@ -157,6 +157,7 @@ public AnalisisPredictivoResponse predecirInstrumentado(
 
     public AnalisisPredictivoResponse predecirInstrumentadoV6(
             AnalisisPredictivoRequest request, Authentication authentication) {
+        long inicioActivo = System.nanoTime();
         ProcedimientoAnalisis procedimiento =
                 procedimientos
                         .findFirstByCodigoAndActivoTrueOrderByVersionDesc(CODIGO_SOFTWARE_IA)
@@ -180,11 +181,17 @@ public AnalisisPredictivoResponse predecirInstrumentado(
                         contexto.evaluador());
 
         EjecucionSoftwareIa ejecucion = ejecutarSoftwareIaV6(evento, true);
-        var ciclo = cicloPostPrediccion == null
-                ? null
+        var ciclo = cicloPostPrediccion == null ? null
                 : cicloPostPrediccion.procesar(ejecucion.resultado().prediccion());
+        EventoAnalisis eventoFinal = ejecucion.evento();
+        if (ciclo != null && request.momento() == com.backend.nutri_predic.common.enums.MomentoEvaluacion.DIARIO) {
+            long duracionMs = Math.max(0L, (System.nanoTime() - inicioActivo) / 1_000_000L);
+            eventoFinal = lifecycle.registrarIntentoCiclo(
+                    ejecucion.evento().getId(), duracionMs, ciclo.completo(),
+                    ciclo.moduloFallo(), ciclo.motivoFallo());
+        }
         return AnalisisPredictivoResponse.from(
-                ejecucion.evento(), ejecucion.resultado().prediccion(),
+                eventoFinal, ejecucion.resultado().prediccion(),
                 ciclo == null ? null : ciclo.pccIa(), ciclo == null ? null : ciclo.pcs());
     }
 

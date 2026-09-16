@@ -252,7 +252,7 @@ public class ConsumoEvaluacionExtractor {
         Instant inicioCorte = fechaCorte.atStartOfDay(ZoneOffset.UTC).toInstant();
         Instant finCorte =
                 fechaCorte.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant().minusNanos(1);
-        return rubricas.findAllByOrderByVersionDescIdDesc().stream()
+        return rubricas.findConCriteriosOrderByVersionDescIdDesc().stream()
                 .filter(r -> r.getEstado() == EstadoCriterioConsumo.ACTIVO)
                 .filter(RubricaConsumoSuplementos::isValidada)
                 .filter(r -> r.getVentanaDias() == null || r.getVentanaDias().equals(ventanaDias))

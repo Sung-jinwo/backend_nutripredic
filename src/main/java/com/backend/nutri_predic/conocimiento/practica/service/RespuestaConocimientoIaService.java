@@ -2,6 +2,8 @@ package com.backend.nutri_predic.conocimiento.practica.service;
 
 import com.backend.nutri_predic.common.exception.BusinessException;
 import com.backend.nutri_predic.common.exception.ResourceNotFoundException;
+import com.backend.nutri_predic.common.enums.EstadoValidezMedicion;
+import com.backend.nutri_predic.common.enums.MomentoEvaluacion;
 import com.backend.nutri_predic.common.service.AccessService;
 import com.backend.nutri_predic.conocimiento.practica.dto.ResponderConocimientoIaRequest;
 import com.backend.nutri_predic.conocimiento.practica.dto.SesionConocimientoResultadoResponse;
@@ -11,6 +13,8 @@ import com.backend.nutri_predic.conocimiento.practica.entity.RespuestaAdaptativa
 import com.backend.nutri_predic.conocimiento.practica.repository.PreguntaGeneradaIaRepository;
 import com.backend.nutri_predic.conocimiento.practica.repository.RespuestaAdaptativaIaRepository;
 import com.backend.nutri_predic.conocimiento.practica.repository.SesionConocimientoIaRepository;
+import com.backend.nutri_predic.prediccionmodelo.entity.EstadoPrediccionModelo;
+import com.backend.nutri_predic.prediccionmodelo.service.ModeloPredictivoV6Service;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -54,7 +58,8 @@ public class RespuestaConocimientoIaService {
                                 () ->
                                         new ResourceNotFoundException(
                                                 "Sesión de conocimiento adaptativo"));
-        if (!sesion.getPrediccionModelo().getCliente().getId().equals(clienteId)) {
+        Long propietario = sesion.getClienteId() != null ? sesion.getClienteId() : sesion.getPrediccionModelo().getCliente().getId();
+        if (!propietario.equals(clienteId)) {
             throw new ResourceNotFoundException("Sesión de conocimiento adaptativo");
         }
         if (sesion.getEstado() == EstadoSesionConocimientoIa.RESPONDIDA
@@ -103,8 +108,28 @@ public class RespuestaConocimientoIaService {
                                 ? "INTERMEDIO"
                                 : "BAJO");
         sesion.marcarRespondida(respondidaEn);
+        validarComoMedicionOficial(sesion, preguntasSesion.size(), persistidas.size());
         sesiones.save(sesion);
         return SesionConocimientoResultadoResponse.from(sesion, preguntasSesion, persistidas);
+    }
+
+    private void validarComoMedicionOficial(
+            com.backend.nutri_predic.conocimiento.practica.entity.SesionConocimientoIa sesion,
+            int totalPreguntas,
+            int totalRespuestas) {
+        var prediccion = sesion.getPrediccionModelo();
+        boolean valida = prediccion != null
+                && prediccion.getEstado() == EstadoPrediccionModelo.EXITOSA
+                && prediccion.getMomentoEvaluacion() == MomentoEvaluacion.DIARIO
+                && ModeloPredictivoV6Service.esModeloDiarioAdmitido(prediccion.getModelVersion())
+                && "pcc-ia-v1".equals(sesion.getConfiguracionVersion())
+                && totalPreguntas == 5
+                && totalRespuestas == 5
+                && java.math.BigDecimal.TEN.compareTo(sesion.getPuntajeMaximo()) == 0
+                && sesion.getPuntajeObtenido() != null
+                && java.util.Set.of("BAJO", "INTERMEDIO", "ALTO").contains(sesion.getNivelResultado());
+        sesion.setEstadoValidez(valida ? EstadoValidezMedicion.VALIDA : EstadoValidezMedicion.INVALIDA);
+        sesion.setMotivoInvalidez(valida ? null : "SESION_NO_CUMPLE_CONTRATO_PCC_DIARIO");
     }
 
     private void validarConjuntoExacto(

@@ -17,6 +17,7 @@ import com.backend.nutri_predic.indicador.service.PccIndicatorService;
 import com.backend.nutri_predic.perfilhabitos.entity.ClasificacionPerfilHabitos;
 import com.backend.nutri_predic.prediccionmodelo.entity.*;
 import com.backend.nutri_predic.prediccionmodelo.repository.PrediccionModeloRepository;
+import com.backend.nutri_predic.prediccionmodelo.service.ModeloPredictivoV6Service;
 import com.backend.nutri_predic.conocimiento.evaluacion.repository.ResultadoTestRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -42,6 +43,40 @@ class ConocimientoIaIntegrationTests {
     @Autowired TrazaLlamadaGeminiRepository trazas;
     @Autowired ResultadoTestRepository resultadosTest;
     @Autowired PccIndicatorService pcc;
+
+    @Test
+    void respuestaDeSesionDiariaV6ActualizaPccInmediatamente() {
+        var admin = admin();
+        var registro = auth.register(new RegisterRequest(
+                "pcc-diario-" + UUID.randomUUID() + "@test.local", "Password1!", "PCC Diario"));
+        var cliente = clientes.findById(registro.clienteId()).orElseThrow();
+        var prediccion = new PrediccionModelo();
+        prediccion.setCliente(cliente);
+        prediccion.setFechaCorte(LocalDate.now());
+        prediccion.setMomentoEvaluacion(MomentoEvaluacion.DIARIO);
+        prediccion.setSchemaVersion("variables-modelo-v6");
+        prediccion.setModelVersion(ModeloPredictivoV6Service.MODEL_VERSION_ESPERADA);
+        prediccion.setClasificacionPredicha(ClasificacionPerfilHabitos.MEJORABLE);
+        prediccion.setProbAdecuado(new BigDecimal("0.2"));
+        prediccion.setProbMejorable(new BigDecimal("0.6"));
+        prediccion.setProbCritico(new BigDecimal("0.2"));
+        prediccion.setEstado(EstadoPrediccionModelo.EXITOSA);
+        prediccion = predicciones.save(prediccion);
+
+        var generada = service.generarAutomatico(prediccion.getId());
+        var preguntasDiarias = preguntas.findBySesionIdOrderByOrdenAsc(generada.sesionId());
+        assertThat(preguntasDiarias).hasSize(5);
+        respuestasService.responder(
+                cliente.getId(), generada.sesionId(),
+                new ResponderConocimientoIaRequest(preguntasDiarias.stream()
+                        .map(q -> new Respuesta(q.getId(), opcionIncorrecta(q.getRespuestaCorrecta())))
+                        .toList()), admin);
+
+        var indicador = pcc.obtener();
+        assertThat(indicador.totalEvaluadosValidos()).isEqualTo(1);
+        assertThat(indicador.totalBajoConocimiento()).isEqualTo(1);
+        assertThat(indicador.porcentajePcc()).isEqualTo(100.0);
+    }
 
     @Test
     @Transactional

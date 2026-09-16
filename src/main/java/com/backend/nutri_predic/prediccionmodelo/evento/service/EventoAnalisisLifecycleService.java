@@ -41,6 +41,7 @@ public class EventoAnalisisLifecycleService {
         evento.setProcedimiento(procedimiento);
         evento.setFechaCorte(fechaCorte);
         evento.setMomento(momento);
+        evento.iniciarCicloDiario();
         evento.setParticipacionEstudio(participacion);
         evento.setEvaluador(evaluador);
         evento.iniciarAnalisis(Instant.now());
@@ -110,6 +111,17 @@ public class EventoAnalisisLifecycleService {
     public EventoAnalisis cerrarManual(Long eventoId, String observaciones) {
         EventoAnalisis evento = obtener(eventoId);
         evento.cerrarManual(Instant.now(), observaciones);
+        return eventos.saveAndFlush(evento);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public EventoAnalisis registrarIntentoCiclo(
+            Long eventoId, long duracionActivaMs, boolean completo,
+            String moduloFallo, String motivoFallo) {
+        EventoAnalisis evento = obtener(eventoId);
+        evento.registrarIntentoCiclo(
+                duracionActivaMs, completo, moduloFallo, motivoFallo,
+                completo ? Instant.now() : null);
         return eventos.saveAndFlush(evento);
     }
 

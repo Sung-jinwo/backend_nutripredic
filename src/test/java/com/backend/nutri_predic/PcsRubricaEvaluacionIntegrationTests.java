@@ -49,6 +49,26 @@ class PcsRubricaEvaluacionIntegrationTests {
     @Autowired RubricaConsumoSuplementosRepository rubricas;
     @Autowired SnapshotEvaluacionConsumoRepository snapshots;
     @Autowired ObjectMapper json;
+    @Autowired com.backend.nutri_predic.consumo.repository.CriterioConsumoSuplementosRepository criterios;
+
+    @Test
+    @Transactional
+    void rubricaTecnicaVaciaNoDesplazaReferenciaConCriterios() {
+        var oficial = rubricas.saveAndFlush(rubrica(EstadoCriterioConsumo.ACTIVO, true));
+        var regla = new com.backend.nutri_predic.consumo.entity.CriterioConsumoSuplementos();
+        regla.setRubrica(oficial);
+        regla.setAlcance("COMPONENTE");
+        regla.setComponenteTipo("CAFEINA");
+        regla.setCantidadReferencia(new BigDecimal("400"));
+        regla.setTipoEvaluador("MAYOR_QUE");
+        criterios.saveAndFlush(regla);
+        var vacia = rubrica(EstadoCriterioConsumo.ACTIVO, true);
+        vacia.setVersion(999);
+        var guardada = rubricas.saveAndFlush(vacia);
+        var candidatas = rubricas.findConCriteriosOrderByVersionDescIdDesc();
+        assertThat(candidatas).noneMatch(r -> r.getId().equals(guardada.getId()));
+        assertThat(candidatas).anyMatch(r -> r.getId().equals(oficial.getId()));
+    }
 
     @Test
     @Transactional

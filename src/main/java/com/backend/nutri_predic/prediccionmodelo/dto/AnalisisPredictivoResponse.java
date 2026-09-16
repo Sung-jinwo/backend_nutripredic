@@ -37,7 +37,11 @@ public record AnalisisPredictivoResponse(
         Instant analisisIniciadoEn,
         Instant resultadoDisponibleEn,
         @Schema(allowableValues = {"GENERADA", "PENDIENTE", "NO_DISPONIBLE"}) String estadoPccIa,
-        @Schema(allowableValues = {"ALTO", "NO_ALTO", "NO_DETERMINADA"}) String estadoPcs) {
+        @Schema(allowableValues = {"ALTO", "NO_ALTO", "NO_DETERMINADA"}) String estadoPcs,
+        @Schema(allowableValues = {"PENDIENTE", "COMPLETADO", "FALLIDO"}) String estadoCicloDiario,
+        Long procesamientoCicloMs,
+        String moduloFalloCiclo,
+        String motivoFalloCiclo) {
 
     public AnalisisPredictivoResponse(
             Long prediccionId, Long eventoAnalisisId, LocalDate fechaCorte, String momento,
@@ -47,7 +51,7 @@ public record AnalisisPredictivoResponse(
         this(prediccionId, eventoAnalisisId, fechaCorte, momento, clasificacion, probabilidades,
                 modelVersion, schemaVersion, inferenceMs, inferredAt, null, null, null, null,
                 null, null, null, null, null, null, null, origenResultado, estado,
-                analisisIniciadoEn, resultadoDisponibleEn, null, null);
+                analisisIniciadoEn, resultadoDisponibleEn, null, null, null, null, null, null);
     }
 
     public static AnalisisPredictivoResponse from(
@@ -82,7 +86,11 @@ public record AnalisisPredictivoResponse(
                 evento.getAnalisisIniciadoEn(),
                 evento.getResultadoDisponibleEn(),
                 estadoPccIa,
-                estadoPcs);
+                estadoPcs,
+                evento.getEstadoCicloDiario() == null ? null : evento.getEstadoCicloDiario().name(),
+                evento.getProcesamientoCicloMs(),
+                evento.getModuloFalloCiclo(),
+                evento.getMotivoFalloCiclo());
     }
 
     /** Compatibilidad para consumidores Java del contrato previo al ciclo posterior. */

@@ -1,11 +1,11 @@
 package com.backend.nutri_predic.indicador.service;
 
 import com.backend.nutri_predic.common.enums.EstadoValidezMedicion;
-import com.backend.nutri_predic.common.enums.NivelConocimiento;
 import com.backend.nutri_predic.indicador.dto.EstadoDisponibilidadPcc;
 import com.backend.nutri_predic.indicador.dto.PccIndicatorResponse;
-import com.backend.nutri_predic.conocimiento.evaluacion.entity.ResultadoTest;
-import com.backend.nutri_predic.conocimiento.evaluacion.repository.ResultadoTestRepository;
+import com.backend.nutri_predic.conocimiento.practica.entity.EstadoSesionConocimientoIa;
+import com.backend.nutri_predic.conocimiento.practica.entity.SesionConocimientoIa;
+import com.backend.nutri_predic.conocimiento.practica.repository.SesionConocimientoIaRepository;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -16,27 +16,31 @@ import org.springframework.transaction.annotation.Transactional;
 public class PccIndicatorService {
     public static final String SIN_RESULTADOS_VALIDOS = "SIN_RESULTADOS_VALIDOS";
 
-    private final ResultadoTestRepository resultados;
+    private final SesionConocimientoIaRepository sesiones;
 
-    public PccIndicatorService(ResultadoTestRepository resultados) {
-        this.resultados = resultados;
+    public PccIndicatorService(SesionConocimientoIaRepository sesiones) {
+        this.sesiones = sesiones;
     }
 
     @Transactional(readOnly = true)
     public PccIndicatorResponse obtener() {
-        Map<Long, ResultadoTest> ultimoValidoPorCliente = new LinkedHashMap<>();
-        Comparator<ResultadoTest> porFechaEId =
+        Map<Long, SesionConocimientoIa> ultimoValidoPorCliente = new LinkedHashMap<>();
+        Comparator<SesionConocimientoIa> porFechaEId =
                 Comparator.comparing(
-                                ResultadoTest::getFecha,
+                                SesionConocimientoIa::getFechaEvaluacion,
                                 Comparator.nullsFirst(Comparator.naturalOrder()))
                         .thenComparing(
-                                ResultadoTest::getId,
+                                SesionConocimientoIa::getRespondidaEn,
+                                Comparator.nullsFirst(Comparator.naturalOrder()))
+                        .thenComparing(
+                                SesionConocimientoIa::getId,
                                 Comparator.nullsFirst(Comparator.naturalOrder()));
 
-        for (ResultadoTest resultado :
-                resultados.findByEstadoValidezAndNivelIsNotNull(EstadoValidezMedicion.VALIDA)) {
+        for (SesionConocimientoIa resultado : sesiones.findByEstadoAndEstadoValidez(
+                EstadoSesionConocimientoIa.RESPONDIDA, EstadoValidezMedicion.VALIDA)) {
+            if (resultado.getClienteId() == null || resultado.getNivelResultado() == null) continue;
             ultimoValidoPorCliente.merge(
-                    resultado.getCliente().getId(),
+                    resultado.getClienteId(),
                     resultado,
                     (actual, candidato) ->
                             porFechaEId.compare(actual, candidato) >= 0 ? actual : candidato);
@@ -50,7 +54,7 @@ public class PccIndicatorService {
         long totalEvaluados = ultimoValidoPorCliente.size();
         long totalBajo =
                 ultimoValidoPorCliente.values().stream()
-                        .filter(resultado -> resultado.getNivel() == NivelConocimiento.BAJO)
+                        .filter(resultado -> "BAJO".equals(resultado.getNivelResultado()))
                         .count();
         return new PccIndicatorResponse(
                 totalBajo * 100.0 / totalEvaluados,

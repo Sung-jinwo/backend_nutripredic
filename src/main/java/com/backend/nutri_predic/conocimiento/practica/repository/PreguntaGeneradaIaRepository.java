@@ -8,4 +8,8 @@ public interface PreguntaGeneradaIaRepository extends JpaRepository<PreguntaGene
     List<PreguntaGeneradaIa> findBySesionIdOrderByOrdenAsc(Long sesionId);
 
     List<PreguntaGeneradaIa> findBySesionIdAndIdIn(Long sesionId, Collection<Long> ids);
+
+    long countBySesionId(Long sesionId);
+
+    void deleteBySesionId(Long sesionId);
 }

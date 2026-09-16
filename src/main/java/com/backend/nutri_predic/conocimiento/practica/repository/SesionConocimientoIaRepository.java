@@ -9,6 +9,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface SesionConocimientoIaRepository extends JpaRepository<SesionConocimientoIa, Long> {
+    Optional<SesionConocimientoIa> findByClienteIdAndConfiguracionVersion(Long clienteId, String configuracionVersion);
+    Optional<SesionConocimientoIa> findFirstByClienteIdOrderByCreadoEnDesc(Long clienteId);
     Optional<SesionConocimientoIa> findByPrediccionModeloIdAndConfiguracionVersion(
             Long prediccionId, String configuracionVersion);
 
@@ -22,6 +24,10 @@ public interface SesionConocimientoIaRepository extends JpaRepository<SesionCono
             Long clienteId,
             com.backend.nutri_predic.conocimiento.practica.entity.EstadoSesionConocimientoIa estado,
             java.time.LocalDate fechaEvaluacion);
+
+    List<SesionConocimientoIa> findByEstadoAndEstadoValidez(
+            com.backend.nutri_predic.conocimiento.practica.entity.EstadoSesionConocimientoIa estado,
+            com.backend.nutri_predic.common.enums.EstadoValidezMedicion estadoValidez);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select s from SesionConocimientoIa s where s.id = :id")

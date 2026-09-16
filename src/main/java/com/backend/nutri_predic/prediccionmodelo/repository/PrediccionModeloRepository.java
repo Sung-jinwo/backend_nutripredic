@@ -36,6 +36,14 @@ public interface PrediccionModeloRepository extends JpaRepository<PrediccionMode
                     EstadoPrediccionModelo estado);
 
     Optional<PrediccionModelo>
+            findFirstByClienteIdAndFechaCorteAndMomentoEvaluacionAndSchemaVersionAndEstadoOrderByFechaPrediccionDesc(
+                    Long clienteId,
+                    LocalDate fechaCorte,
+                    MomentoEvaluacion momentoEvaluacion,
+                    String schemaVersion,
+                    EstadoPrediccionModelo estado);
+
+    Optional<PrediccionModelo>
             findFirstByClienteIdAndFechaCorteAndMomentoEvaluacionAndParticipacionEstudioIdAndSchemaVersionAndModelVersionAndEstadoOrderByFechaPrediccionDesc(
                     Long clienteId,
                     LocalDate fechaCorte,

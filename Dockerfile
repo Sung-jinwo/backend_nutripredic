@@ -62,7 +62,7 @@ ENV SPRING_PROFILES_ACTIVE=docker \
     ADMIN_NAME=Administrador \
     API_KEY_GEMINI="" \
     GEMINI_BASE_URL=https://generativelanguage.googleapis.com \
-    GEMINI_MODEL=gemini-3.5-flash-lite \
+    GEMINI_MODEL=gemini-3.1-flash-lite \
     GEMINI_TIMEOUT=PT30S \
     GEMINI_MOCK_ENABLED=false
 

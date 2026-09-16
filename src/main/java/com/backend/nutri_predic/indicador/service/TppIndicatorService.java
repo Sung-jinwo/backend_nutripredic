@@ -6,8 +6,11 @@ import com.backend.nutri_predic.indicador.dto.MotivoExclusionTpp;
 import com.backend.nutri_predic.indicador.dto.TppIndicatorResponse;
 import com.backend.nutri_predic.prediccionmodelo.evento.entity.EventoAnalisis;
 import com.backend.nutri_predic.prediccionmodelo.evento.entity.TipoProcedimientoAnalisis;
+import com.backend.nutri_predic.prediccionmodelo.evento.entity.EstadoCicloDiario;
+import com.backend.nutri_predic.prediccionmodelo.evento.entity.OrigenResultadoAnalisis;
+import com.backend.nutri_predic.common.enums.MomentoEvaluacion;
+import com.backend.nutri_predic.prediccionmodelo.service.ModeloPredictivoV6Service;
 import com.backend.nutri_predic.prediccionmodelo.evento.repository.EventoAnalisisRepository;
-import java.time.Duration;
 import java.util.EnumMap;
 import java.util.Map;
 import org.springframework.stereotype.Service;
@@ -36,11 +39,7 @@ public class TppIndicatorService {
                 continue;
             }
 
-            sumaTppMs +=
-                    Duration.between(
-                                    evento.getAnalisisIniciadoEn(),
-                                    evento.getResultadoDisponibleEn())
-                            .toMillis();
+            sumaTppMs += evento.getProcesamientoCicloMs();
             totalValidos++;
         }
 
@@ -71,6 +70,17 @@ public class TppIndicatorService {
                 || evento.getProcedimiento().getTipo() != TipoProcedimientoAnalisis.SOFTWARE_IA) {
             return MotivoExclusionTpp.PROCEDIMIENTO_NO_APLICABLE;
         }
+        if (evento.getMomento() != MomentoEvaluacion.DIARIO) {
+            return MotivoExclusionTpp.NO_DIARIO;
+        }
+        if (evento.getPrediccionModelo() == null
+                || !ModeloPredictivoV6Service.esModeloDiarioAdmitido(
+                        evento.getPrediccionModelo().getModelVersion())) {
+            return MotivoExclusionTpp.VERSION_NO_V6;
+        }
+        if (evento.getOrigenResultado() != OrigenResultadoAnalisis.GENERADO) {
+            return MotivoExclusionTpp.RESULTADO_REUTILIZADO;
+        }
         if (evento.getAnalisisIniciadoEn() == null) {
             return MotivoExclusionTpp.INICIO_AUSENTE;
         }
@@ -82,6 +92,16 @@ public class TppIndicatorService {
         }
         if (evento.getEstadoValidez() != EstadoValidezMedicion.VALIDA) {
             return MotivoExclusionTpp.EVENTO_INVALIDO;
+        }
+        if (evento.getEstadoCicloDiario() == EstadoCicloDiario.FALLIDO) {
+            return MotivoExclusionTpp.CICLO_FALLIDO;
+        }
+        if (evento.getEstadoCicloDiario() != EstadoCicloDiario.COMPLETADO
+                || evento.getCicloCompletadoEn() == null) {
+            return MotivoExclusionTpp.CICLO_INCOMPLETO;
+        }
+        if (evento.getProcesamientoCicloMs() == null || evento.getProcesamientoCicloMs() < 0) {
+            return MotivoExclusionTpp.DURACION_CICLO_INVALIDA;
         }
         return null;
     }
