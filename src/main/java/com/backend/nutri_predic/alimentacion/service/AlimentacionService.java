@@ -225,7 +225,7 @@ public class AlimentacionService {
                                             x.getUnidad().getCodigo(),
                                             x.getMomentoComida().name(),
                                             x.getRegistroHabito().getFecha(),
-                                            a.n());
+                                            a.n(), x.getProteinaGRegistrada(), x.getCarbohidratosGRegistrados(), x.getGrasasGRegistradas());
                                 })
                         .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
         if (ordenarFrecuencia)

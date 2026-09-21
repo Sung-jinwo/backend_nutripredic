@@ -67,7 +67,7 @@ public class SuplementoController {
             @PathVariable Long clienteId,
             @Valid @RequestBody SuplementoAsignacionRequest r,
             Authentication auth) {
-        return service.assign(clienteId, r, auth);
+        return service.registrarDesdeFormulario(clienteId, r, auth);
     }
 
     @PutMapping("/api/clientes/{clienteId}/suplementos/{suplementoId}")
@@ -77,7 +77,7 @@ public class SuplementoController {
             @PathVariable Long suplementoId,
             @Valid @RequestBody SuplementoActualizacionRequest r,
             Authentication auth) {
-        return service.update(clienteId, suplementoId, r, auth);
+        return service.actualizarDesdeFormulario(clienteId, suplementoId, r, auth);
     }
 
     @DeleteMapping("/api/clientes/{clienteId}/suplementos/{suplementoId}")

@@ -26,10 +26,24 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class GlobalExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+    @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
+    org.springframework.http.ResponseEntity<ApiErrorResponse> responseStatus(
+            org.springframework.web.server.ResponseStatusException exception, HttpServletRequest request) {
+        var status = HttpStatus.valueOf(exception.getStatusCode().value());
+        return org.springframework.http.ResponseEntity.status(status)
+                .body(error(status, exception.getReason(), request));
+    }
+
     @ExceptionHandler(ResourceNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     ApiErrorResponse notFound(ResourceNotFoundException exception, HttpServletRequest request) {
         return error(HttpStatus.NOT_FOUND, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    ApiErrorResponse routeNotFound(HttpServletRequest request) {
+        return error(HttpStatus.NOT_FOUND, "La ruta solicitada no está disponible. Comprueba que el backend esté actualizado.", request);
     }
 
     @ExceptionHandler({BusinessException.class, IllegalArgumentException.class})

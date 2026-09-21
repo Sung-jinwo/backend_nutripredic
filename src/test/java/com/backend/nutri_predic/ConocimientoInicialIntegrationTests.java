@@ -51,5 +51,23 @@ class ConocimientoInicialIntegrationTests {
         assertThat(resultado.puntajeObtenido()).isEqualByComparingTo(BigDecimal.ZERO);
         assertThat(resultado.nivel()).isEqualTo("BAJO");
         assertThat(sesiones.findById(primera.sesionId()).orElseThrow().getEstadoValidez().name()).isEqualTo("INVALIDA");
+        var siguiente = new PlanDiario(); siguiente.setCliente(cliente); siguiente.setFechaObjetivo(plan.getFechaObjetivo().plusDays(1)); siguiente.setEstado(EstadoPlanDiario.DISPONIBLE);
+        siguiente.setEnergiaMaxKcal(plan.getEnergiaMaxKcal()); siguiente.setProteinaMaxG(plan.getProteinaMaxG());
+        siguiente.setCarbohidratosMaxG(plan.getCarbohidratosMaxG()); siguiente.setGrasasMaxG(plan.getGrasasMaxG()); siguiente.setAguaMaxMl(plan.getAguaMaxMl());
+        siguiente = planes.saveAndFlush(siguiente);
+        var educativa = generacion.generarDiariaDesdePlan(cliente, siguiente);
+        assertThat(educativa.sesionId()).isNotEqualTo(primera.sesionId());
+        assertThat(educativa.preguntasAdaptativas()).hasSize(5);
+        assertThat(educativa.clasificacionPredictiva()).isNull();
+        assertThat(generacion.generarDiariaDesdePlan(cliente, siguiente).sesionId()).isEqualTo(educativa.sesionId());
+        var sesionEducativa = sesiones.findById(educativa.sesionId()).orElseThrow();
+        assertThat(sesionEducativa.getConfiguracionVersion()).isEqualTo("pcc-perfil-diario-v1");
+        assertThat(sesionEducativa.getPrediccionModelo()).isNull();
+        var respuestasDiarias = preguntas.findBySesionIdOrderByOrdenAsc(educativa.sesionId()).stream()
+            .map(q -> new ResponderConocimientoIaRequest.Respuesta(q.getId(), "A")).toList();
+        responder.responder(cliente.getId(), educativa.sesionId(), new ResponderConocimientoIaRequest(respuestasDiarias), admin);
+        assertThat(sesionEducativa.getEstadoValidez().name()).isEqualTo("INVALIDA");
+        assertThat(generacion.generarDiariaDesdePlan(cliente, siguiente).sesionId()).isEqualTo(educativa.sesionId());
+        assertThat(sesiones.findById(primera.sesionId()).orElseThrow().getPuntajeObtenido()).isEqualByComparingTo(BigDecimal.ZERO);
     }
 }

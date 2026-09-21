@@ -92,14 +92,33 @@ public class GeneracionPreguntasConocimientoService {
         if (existente.isPresent() && existente.get().getEstado() != EstadoSesionConocimientoIa.IA_NO_DISPONIBLE)
             return respuesta(existente.get());
         var diaria = sesiones.findFirstByClienteIdAndFechaEvaluacionOrderByCreadoEnDesc(cliente.getId(), plan.getFechaObjetivo());
-        if (diaria.isPresent() && diaria.get().getPrediccionModelo() != null) return respuesta(diaria.get());
-        var sesion = existente.orElseGet(SesionConocimientoIa::new);
+        if (diaria.isPresent()) {
+            if (diaria.get().getPrediccionModelo() != null || diaria.get().getEstado() != EstadoSesionConocimientoIa.IA_NO_DISPONIBLE)
+                return respuesta(diaria.get());
+            return generarPerfilDesdePlan(diaria.get(), cliente, plan, diaria.get().getConfiguracionVersion());
+        }
+        return generarPerfilDesdePlan(existente.orElseGet(SesionConocimientoIa::new), cliente, plan, "pcc-inicial-v1");
+    }
+
+    @Transactional
+    public SesionConocimientoPublicaResponse generarDiariaDesdePlan(
+            com.backend.nutri_predic.cliente.entity.Cliente cliente, PlanDiario plan) {
+        var existente = sesiones.findFirstByClienteIdAndFechaEvaluacionOrderByCreadoEnDesc(cliente.getId(), plan.getFechaObjetivo());
+        if (existente.isPresent() && (existente.get().getPrediccionModelo() != null
+                || existente.get().getEstado() != EstadoSesionConocimientoIa.IA_NO_DISPONIBLE))
+            return respuesta(existente.get());
+        return generarPerfilDesdePlan(existente.orElseGet(SesionConocimientoIa::new), cliente, plan,
+                existente.map(SesionConocimientoIa::getConfiguracionVersion).orElse("pcc-perfil-diario-v1"));
+    }
+
+    private SesionConocimientoPublicaResponse generarPerfilDesdePlan(SesionConocimientoIa sesion,
+            com.backend.nutri_predic.cliente.entity.Cliente cliente, PlanDiario plan, String configuracion) {
         sesion.prepararReintentoGeneracion();
         sesion.setClienteId(cliente.getId());
         sesion.setFechaEvaluacion(plan.getFechaObjetivo());
-        sesion.setConfiguracionVersion("pcc-inicial-v1");
-        sesion.setModelVersionPredictivo("NO_APLICA_EVALUACION_INICIAL");
-        sesion.setSchemaVersion("conocimiento-inicial-v1");
+        sesion.setConfiguracionVersion(configuracion);
+        sesion.setModelVersionPredictivo("NO_APLICA_SIN_PREDICCION");
+        sesion.setSchemaVersion(configuracion.equals("pcc-inicial-v1") ? "conocimiento-inicial-v1" : "conocimiento-perfil-diario-v1");
         sesion.setModeloGenerativo(props.getModel());
         sesion.setObjetivoCliente(cliente.getTipoObjetivoFisico() == null ? cliente.getObjetivoFisico() : cliente.getTipoObjetivoFisico().name());
         sesion.setClasificacionPredictiva(null);
@@ -120,9 +139,10 @@ public class GeneracionPreguntasConocimientoService {
         var prediccion = predicciones.findById(prediccionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Predicción de modelo"));
         var sesionDiaria = sesiones
-                .findFirstByClienteIdAndFechaEvaluacionOrderByCreadoEnDesc(
+                .findFirstByClienteIdAndFechaEvaluacionAndPrediccionModeloIsNotNullOrderByCreadoEnDesc(
                         prediccion.getCliente().getId(), prediccion.getFechaCorte());
-        if (sesionDiaria.isPresent()) return respuesta(sesionDiaria.get());
+        if (sesionDiaria.isPresent() && sesionDiaria.get().getEstado() != EstadoSesionConocimientoIa.IA_NO_DISPONIBLE)
+            return respuesta(sesionDiaria.get());
         if (prediccion.getEstado() != EstadoPrediccionModelo.EXITOSA
                 || !(prediccion.getSchemaVersion().startsWith("variables-modelo-v5")
                         || prediccion.getSchemaVersion().startsWith("variables-modelo-v6")))
@@ -285,7 +305,8 @@ public class GeneracionPreguntasConocimientoService {
         var sesion =
                 (fecha == null
                         ? sesiones.findFirstByClienteIdOrderByCreadoEnDesc(clienteId)
-                        : sesiones.findFirstByClienteIdAndFechaEvaluacionOrderByCreadoEnDesc(clienteId, fecha))
+                        : sesiones.findFirstByClienteIdAndFechaEvaluacionAndPrediccionModeloIsNotNullOrderByCreadoEnDesc(clienteId, fecha)
+                                .or(() -> sesiones.findFirstByClienteIdAndFechaEvaluacionOrderByCreadoEnDesc(clienteId, fecha)))
                         .orElseThrow(
                                 () ->
                                         new ResourceNotFoundException(

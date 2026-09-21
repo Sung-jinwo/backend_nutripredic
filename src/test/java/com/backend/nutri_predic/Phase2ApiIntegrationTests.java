@@ -115,14 +115,14 @@ class Phase2ApiIntegrationTests {
         suplemento.setTipo("Rendimiento");
         suplemento.setDescripcion("Monohidrato");
         suplemento = catalogoRepository.save(suplemento);
-        String inicio = LocalDate.now().minusDays(10).toString();
+        String inicio = LocalDate.now(java.time.ZoneId.of("America/Lima")).toString();
         String fin = LocalDate.now().plusMonths(2).toString();
         String body =
                 """
                 {"suplementoId":%d,"nombreSuplemento":"Creatina de prueba","cantidad":5.0,"unidad":"g","frecuencia":"diaria",
-                 "tiempoUso":"8 semanas","activo":true,"fechaInicio":"%s","fechaFin":"%s"}
+                 "tiempoUso":"8 semanas","activo":true,"fechaInicio":"%s","fechaFin":null}
                 """
-                        .formatted(suplemento.getId(), inicio, fin);
+                        .formatted(suplemento.getId(), inicio);
         mockMvc.perform(
                         post("/api/clientes/{id}/suplementos", cliente.clienteId())
                                 .headers(auth(cliente))
@@ -154,6 +154,51 @@ class Phase2ApiIntegrationTests {
                 .andExpect(jsonPath("$.cantidad").value(3.0))
                 .andExpect(jsonPath("$.tiempoUso").value("12 semanas"))
                 .andExpect(jsonPath("$.activo").value(false));
+    }
+
+    @Test
+    @Transactional
+    void suplementoConSoloCreatinaEsActivoYVisibleSinRegistroDiario() throws Exception {
+        Auth cliente = register("creatina-parcial");
+        var hoy = LocalDate.now(java.time.ZoneId.of("America/Lima"));
+        String nombre = "Creatina parcial " + UUID.randomUUID();
+        String body = """
+            {"suplementoId":null,"nombreSuplemento":"%s","cantidad":5,"unidad":"G",
+             "tiempoUso":"En curso","activo":true,"fechaInicio":"%s","fechaFin":null,
+             "cantidadPorToma":5,"unidadCodigo":"G","creatinaGPorToma":5}
+            """.formatted(nombre, hoy);
+        mockMvc.perform(post("/api/clientes/{id}/suplementos", cliente.clienteId())
+                .headers(auth(cliente)).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.activo").value(true))
+                .andExpect(jsonPath("$.creatinaGPorToma").value(5))
+                .andExpect(jsonPath("$.proteinaGPorToma").doesNotExist())
+                .andExpect(jsonPath("$.cafeinaMgPorToma").doesNotExist());
+        mockMvc.perform(get("/api/clientes/{id}/suplementos/habituales", cliente.clienteId())
+                .param("fecha", hoy.toString()).headers(auth(cliente)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].nombre").value(nombre));
+    }
+
+    @Test
+    @Transactional
+    void formularioRechazaFechasAntiguasFuturasEInicioInactivo() throws Exception {
+        Auth cliente = register("fechas-supl");
+        var hoy = LocalDate.now(java.time.ZoneId.of("America/Lima"));
+        for (var fecha : java.util.List.of(hoy.minusDays(1), hoy.plusDays(1))) {
+            String body = """
+                {"nombreSuplemento":"No guardar","cantidad":5,"unidad":"G","activo":true,
+                 "fechaInicio":"%s","cantidadPorToma":5,"unidadCodigo":"G"}
+                """.formatted(fecha);
+            mockMvc.perform(post("/api/clientes/{id}/suplementos", cliente.clienteId())
+                    .headers(auth(cliente)).contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isBadRequest());
+        }
+        String inactivo = """
+            {"nombreSuplemento":"No guardar","cantidad":5,"unidad":"G","activo":false,
+             "fechaInicio":"%s","cantidadPorToma":5,"unidadCodigo":"G"}
+            """.formatted(hoy);
+        mockMvc.perform(post("/api/clientes/{id}/suplementos", cliente.clienteId())
+                .headers(auth(cliente)).contentType(MediaType.APPLICATION_JSON).content(inactivo))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

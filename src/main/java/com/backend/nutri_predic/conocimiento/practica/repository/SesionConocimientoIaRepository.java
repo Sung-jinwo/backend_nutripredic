@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface SesionConocimientoIaRepository extends JpaRepository<SesionConocimientoIa, Long> {
+    Optional<SesionConocimientoIa> findFirstByClienteIdAndFechaEvaluacionAndPrediccionModeloIsNotNullOrderByCreadoEnDesc(Long clienteId, java.time.LocalDate fechaEvaluacion);
     Optional<SesionConocimientoIa> findByClienteIdAndConfiguracionVersion(Long clienteId, String configuracionVersion);
     Optional<SesionConocimientoIa> findFirstByClienteIdOrderByCreadoEnDesc(Long clienteId);
     Optional<SesionConocimientoIa> findByPrediccionModeloIdAndConfiguracionVersion(

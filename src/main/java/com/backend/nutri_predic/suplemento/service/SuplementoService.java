@@ -95,6 +95,32 @@ public class SuplementoService {
     }
 
     @Transactional
+    public SuplementoClienteResponse registrarDesdeFormulario(
+            Long clienteId, SuplementoAsignacionRequest r, Authentication auth) {
+        access.client(clienteId, auth);
+        var hoy = LocalDate.now(java.time.ZoneId.of("America/Lima"));
+        if (!hoy.equals(r.fechaInicio()))
+            throw new BusinessException("La fecha de registro del suplemento debe ser hoy; no se permiten fechas antiguas ni futuras");
+        if (!Boolean.TRUE.equals(r.activo()) || r.fechaFin() != null)
+            throw new BusinessException("Un suplemento nuevo debe registrarse activo y sin fecha de fin; desactívalo desde Editar");
+        return assign(clienteId, r, auth);
+    }
+
+    @Transactional
+    public SuplementoClienteResponse actualizarDesdeFormulario(
+            Long clienteId, Long suplementoId, SuplementoActualizacionRequest r, Authentication auth) {
+        access.client(clienteId, auth);
+        var actual = assigned.findByClienteIdAndSuplementoId(clienteId, suplementoId)
+                .orElseThrow(() -> new ResourceNotFoundException("Asignación"));
+        if (!java.util.Objects.equals(actual.getFechaInicio(), r.fechaInicio()))
+            throw new BusinessException("No se puede cambiar la fecha original de registro del suplemento");
+        if (r.fechaFin() != null && !java.util.Objects.equals(actual.getFechaFin(), r.fechaFin())
+                && r.fechaFin().isBefore(LocalDate.now(java.time.ZoneId.of("America/Lima"))))
+            throw new BusinessException("La nueva fecha de fin no puede ser anterior a hoy");
+        return update(clienteId, suplementoId, r, auth);
+    }
+
+    @Transactional
     public SuplementoClienteResponse assign(
             Long clienteId, SuplementoAsignacionRequest r, Authentication auth) {
         var cliente = access.client(clienteId, auth);

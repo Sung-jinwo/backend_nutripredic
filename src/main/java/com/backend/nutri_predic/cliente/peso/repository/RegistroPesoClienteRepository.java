@@ -6,6 +6,7 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface RegistroPesoClienteRepository extends JpaRepository<RegistroPesoCliente, Long> {
+    java.util.List<RegistroPesoCliente> findByClienteIdOrderByFechaMedicionDescIdDesc(Long clienteId);
     Optional<RegistroPesoCliente> findFirstByClienteIdOrderByFechaMedicionDescIdDesc(Long clienteId);
     Optional<RegistroPesoCliente> findByClienteIdAndFechaMedicion(Long clienteId, LocalDate fecha);
     Optional<RegistroPesoCliente> findFirstByClienteIdAndFechaMedicionBeforeOrderByFechaMedicionDescIdDesc(Long clienteId, LocalDate fecha);

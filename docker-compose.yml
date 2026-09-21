@@ -58,6 +58,8 @@ services:
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.1-flash-lite}
       GEMINI_TIMEOUT: ${GEMINI_TIMEOUT:-PT30S}
       GEMINI_MOCK_ENABLED: ${GEMINI_MOCK_ENABLED:-false}
+      # Public food composition; keep the key in server environment only.
+      FDC_API_KEY: ${FDC_API_KEY:-DEMO_KEY}
       
       # Spring profiles
       SPRING_PROFILES_ACTIVE: docker

@@ -11,4 +11,7 @@ public record AlimentoUsoResponse(
         String ultimaUnidad,
         String ultimoMomento,
         LocalDate ultimaFecha,
-        long vecesUtilizado) {}
+        long vecesUtilizado,
+        BigDecimal ultimaProteinaG,
+        BigDecimal ultimosCarbohidratosG,
+        BigDecimal ultimasGrasasG) {}

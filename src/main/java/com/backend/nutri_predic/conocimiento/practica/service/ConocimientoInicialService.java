@@ -25,10 +25,21 @@ public class ConocimientoInicialService {
     }
     @Transactional
     public SesionConocimientoPublicaResponse asegurar(Long clienteId, Authentication auth) {
+        return asegurar(clienteId, auth, false);
+    }
+    @Transactional
+    public SesionConocimientoPublicaResponse asegurarDiaria(Long clienteId, Authentication auth) {
+        return asegurar(clienteId, auth, true);
+    }
+    private SesionConocimientoPublicaResponse asegurar(Long clienteId, Authentication auth, boolean diaria) {
         access.client(clienteId, auth);
         var cliente = clientes.findByIdForUpdate(clienteId).orElseThrow(() -> new ResourceNotFoundException("Cliente"));
         var hoy = LocalDate.now(ZoneId.of("America/Lima"));
         planes.generarInicial(clienteId, hoy);
-        return preguntas.generarInicialDesdePlan(cliente, repositorioPlanes.findByClienteIdAndFechaObjetivo(clienteId, hoy).orElseThrow());
+        var plan = repositorioPlanes.findByClienteIdAndFechaObjetivo(clienteId, hoy)
+                .orElseThrow(() -> new ResourceNotFoundException("Completa el perfil para disponer de metas y preguntas educativas"));
+        if (plan.getEstado() != com.backend.nutri_predic.plandia.entity.EstadoPlanDiario.DISPONIBLE)
+            throw new ResourceNotFoundException("Las metas todavía no están disponibles; completa los datos esenciales del perfil");
+        return diaria ? preguntas.generarDiariaDesdePlan(cliente, plan) : preguntas.generarInicialDesdePlan(cliente, plan);
     }
 }

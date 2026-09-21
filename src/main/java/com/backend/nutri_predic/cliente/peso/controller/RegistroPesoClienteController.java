@@ -11,6 +11,9 @@ import org.springframework.web.bind.annotation.*;
 public class RegistroPesoClienteController {
     private final RegistroPesoClienteService service;
     public RegistroPesoClienteController(RegistroPesoClienteService service) { this.service = service; }
+    @GetMapping("/historial") public java.util.List<RegistroPesoResponse> historial(@PathVariable Long clienteId, Authentication auth) {
+        return service.historial(clienteId, auth);
+    }
     @GetMapping public EstadoPesoSemanalResponse estado(@PathVariable Long clienteId, Authentication auth) {
         return service.estado(clienteId, auth);
     }
